@@ -1,0 +1,75 @@
+group 'codingame'
+version '1.0'
+
+apply plugin: 'java'
+
+sourceCompatibility = 1.5
+
+repositories {
+  mavenCentral()
+}
+
+dependencies {
+  testCompile group: 'junit', name: 'junit', version: '4.11'
+}
+
+task combine() {
+  doLast {
+    def xdir = new File("$projectDir/src/main/java")
+    def files = sourceList(xdir)
+    def builder = new StringBuilder()
+    def separator = "\n"
+    def doubleSeparator = "\n\n"
+    //imports
+    builder.append("import java.util.*;").append(separator)
+    builder.append("import java.lang.*;").append(separator)
+    builder.append(separator)
+    //main class
+    builder.append("class Player { public static void main(String args[]) {" +
+        "    new AI(new Scanner(System.in)).start();" +
+        "  }}")
+    builder.append(doubleSeparator)
+    //other classes
+    files.each { file ->
+      builder.append(prepareSource(file.text)).append(doubleSeparator)
+    }
+    def filename = "$projectDir/src/main/java/Player.java"
+    def file = new File(filename)
+    def w = file.newWriter()
+
+    w << builder.toString()
+    w.close()
+  }
+}
+
+def sourceList(File dir) {
+  def files = new ArrayList<File>()
+  for (file in dir.listFiles()) {
+    println file.name
+    if (file.name == "Player.java") {
+      continue
+    }
+    if (file.isDirectory()) {
+      files.addAll(sourceList(file))
+      continue
+    }
+    files.add(file)
+  }
+  return files
+}
+
+static def prepareSource(String source) {
+  def abstractz = "abstract"
+  def clazz = "class"
+  def enumz = "enum"
+  def interfaze = "interface"
+  def abstractzIndex = source.indexOf(abstractz)
+  def clazzIndex = source.indexOf(clazz)
+  def enumzIndex = source.indexOf(enumz)
+  def interfazeIndex = source.indexOf(interfaze)
+  if (abstractzIndex > 0) return source.substring(abstractzIndex)
+  if (clazzIndex > 0) return source.substring(clazzIndex)
+  if (enumzIndex > 0) return source.substring(enumzIndex)
+  if (interfazeIndex > 0) return source.substring(interfazeIndex)
+  return source
+}
