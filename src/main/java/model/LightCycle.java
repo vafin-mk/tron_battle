@@ -6,18 +6,22 @@ import java.util.List;
 public class LightCycle {
 
   public Point startPoint;
-  public List<Point> holdedPoints = new ArrayList<>();
-  public boolean me;
+  public final boolean me;
+  public Point currentPoint;
+  public final int index;
 
-  public LightCycle(Point startPoint) {
-    this.startPoint = startPoint;
+  public LightCycle(int index, int myIndex) {
+    this.index = index;
+    this.me = index == myIndex;
   }
 
   public void addHoldedPosition(Point point) {
-    this.holdedPoints.add(point);
+    point.holder = index;
+    this.currentPoint = point;
   }
 
-  public Point currentPosition() {
-    return holdedPoints.get(holdedPoints.size() - 1);
+  public boolean isDead() {
+    return startPoint.x == -1;
   }
+
 }

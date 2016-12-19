@@ -4,14 +4,18 @@ public class Point {
 
   public int x;
   public int y;
+  public int holder = -1;
+  public Pair pair;
   public Point(int x, int y) {
     this.x = x;
     this.y = y;
+    pair = new Pair(x, y);
   }
 
   public void update(int x, int y) {
     this.x = x;
     this.y = y;
+    pair = new Pair(x, y);
   }
 
   @Override
