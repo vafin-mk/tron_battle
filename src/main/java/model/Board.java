@@ -1,5 +1,7 @@
 package model;
 
+import ai.AI;
+
 import java.util.*;
 
 public class Board {
@@ -7,6 +9,8 @@ public class Board {
   final int WIDTH, HEIGHT;
 
   private Map<Pair, Point> allPoints;
+  private LightCycle closestEnemy;
+  private LightCycle myCycle;
 
   public Board(int width, int height) {
     this.WIDTH = width;
@@ -19,16 +23,27 @@ public class Board {
     }
   }
 
-  public void update(List<LightCycle> cycles) {
-    cycles.forEach(cycle -> {
+  public void update(List<LightCycle> cycles, LightCycle myCycle) {
+    int closestDist = 100000;
+    LightCycle closest = null;
+    for (LightCycle cycle : cycles) {
       if (cycle.isDead()) {
         allPoints.values().stream()
             .filter(point -> point.holder == cycle.index)
             .forEach(point -> point.holder = -1);
       } else {
         allPoints.get(cycle.currentPoint.pair).holder = cycle.index;
+        if (!cycle.me) {
+          int dist = cycle.currentPoint.manhattanDist(myCycle.currentPoint);
+          if (dist < closestDist) {
+            closestDist = dist;
+            closest = cycle;
+          }
+        }
       }
-    });
+    }
+    closestEnemy = closest;
+    this.myCycle = myCycle;
   }
 
   public List<Point> availableMoves(LightCycle cycle) {
@@ -75,21 +90,54 @@ public class Board {
   }
 
   public int evaluate(LightCycle cycle) {
-    return availableEmptyPoints(cycle);
+    return cycle.me ? availableEmptyPoints(cycle) : -availableEmptyPoints(cycle);
   }
 
-  public Move bestMove(LightCycle cycle) {
-    Queue<MovePick> variants = new PriorityQueue<>();
+  public Move bestMove() {
+    return minimax(AI.PREDICTION_DEPTH, myCycle, new int[] {Integer.MIN_VALUE}, new int[] {Integer.MAX_VALUE}).move;
+  }
+
+  //minimax with alpha/beta pruning
+  //https://www.ntu.edu.sg/home/ehchua/programming/java/JavaGame_TicTacToe_AI.html
+  private MovePick minimax(int depth, LightCycle cycle, int[] alpha, int[] beta) {
+    System.err.println("DEPTH:" + depth + "|alpha=" + alpha[0] + "|beta=" + beta[0]);
     Point curr = cycle.currentPoint;
-    for (Point point : availableMoves(cycle)) {
-      //apply
-      cycle.addHoldedPosition(point);
-      variants.add(new MovePick(Move.byPoints(curr, point), evaluate(cycle)));
-      //undo
-      point.holder = -1;
-      cycle.currentPoint = curr;
+    List<Point> available = availableMoves(cycle);
+    Point best = null;
+    if (available.isEmpty() || depth == 0) {
+      int score = evaluate(cycle);
+      return new MovePick(Move.UP, score);
+    } else {
+      for (Point point : available) {
+        if (best == null) {
+          best = point;
+        }
+        //apply
+        cycle.addHoldedPosition(point);
+
+        if (cycle.me) {//maximize
+          int score = minimax(depth - 1, closestEnemy, alpha, beta).priority;
+          if (score > alpha[0]) {
+            alpha[0] = score;
+            best = point;
+          }
+        } else {//minimize
+          int score = minimax(depth - 1, myCycle, alpha, beta).priority;
+          if (score < beta[0]) {
+            beta[0] = score;
+            best = point;
+          }
+        }
+        //undo
+        point.holder = -1;
+        cycle.currentPoint = curr;
+
+        if (alpha[0] >= beta[0]) {
+          break;
+        }
+      }
+      return new MovePick(Move.byPoints(curr, best), cycle.me ? alpha[0] : beta[0]);
     }
-    return variants.poll().move;
   }
 
 }

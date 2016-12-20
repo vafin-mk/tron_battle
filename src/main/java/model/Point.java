@@ -18,6 +18,10 @@ public class Point {
     pair = new Pair(x, y);
   }
 
+  public int manhattanDist(Point other) {
+    return StrictMath.abs(other.x - x) + StrictMath.abs(other.y - y);
+  }
+
   @Override
   public boolean equals(Object o) {
     if (this == o) return true;

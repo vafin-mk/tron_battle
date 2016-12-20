@@ -11,6 +11,7 @@ public class AI {
 
   public static final int WIDTH = 30;
   public static final int HEIGHT = 20;
+  public static final int PREDICTION_DEPTH = 10;
 
   List<LightCycle> cycles = new ArrayList<>();
   LightCycle myCycle;
@@ -55,10 +56,12 @@ public class AI {
       myCycle = cycles.get(myIndex);
       firstIteration = false;
     }
-    board.update(cycles);
+    board.update(cycles, myCycle);
   }
 
   private void makeDecision() {
-    board.bestMove(myCycle).execute();
+    Move best = board.bestMove();
+    System.err.println("BEST MOVE:" + best.name());
+    best.execute();
   }
 }
