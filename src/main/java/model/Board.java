@@ -27,7 +27,7 @@ public class Board {
 
   public Point getPoint(int x, int y) {
     if (x < 0 || x > WIDTH - 1 || y < 0 || y > HEIGHT - 1) {
-      return null;
+      return new Point(-1, -1);
     }
     return _board[x][y];
   }
@@ -59,7 +59,7 @@ public class Board {
   }
 
   private void addAvailablePoint(Point point, List<Point> points, int maxRange) {
-    if (point == null || point.holder != -1 || points.contains(point) || maxRange == 0) {
+    if (point == null || point.x == -1 || point.holder != -1 || points.contains(point) || maxRange == 0) {
       return;
     }
     points.add(point);
@@ -74,7 +74,7 @@ public class Board {
   }
 
   public int evaluate(LightCycle cycle) {
-    return findAvailablePoints(cycle, 100).size();
+    return findAvailablePoints(cycle, 10000).size();
   }
 
   public Move bestMove() {

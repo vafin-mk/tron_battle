@@ -86,12 +86,14 @@ public class AI {
       //apply
       myCycle.setHead(point);
 
-      commands.add(new MovePick(Move.byPoints(start, point), board.evaluate(myCycle)));
+      Move move = Move.byPoints(start, point);
+      commands.add(new MovePick(move, board.evaluate(myCycle) + move.ordinal()));
 
       //undo
       point.holder = -1;
       myCycle.head = start;
     }
+    System.err.println("Commands - " + Arrays.toString(commands.toArray()));
     MovePick best = commands.poll();
     System.err.println("BEST MOVE:" + best);
     if (best == null) {

@@ -7,7 +7,9 @@ import model.Move;
 import model.Point;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class LocalRunner {
 
@@ -32,14 +34,17 @@ public class LocalRunner {
   }
 
   public void start() {
+    Map<LightCycle, Move> moves = new HashMap<>();
     int round = 1;
     while (!gameFinished()) {
+      moves.clear();
       if (round % 20 == 0) {
         System.err.println(gameBoard);
       }
-      System.err.println("   ROUND " + round++);
+
       System.err.println(cycles);
       for (int i = 0; i < ais.size(); i++) {
+        System.err.println("   ROUND " + round++);
         LightCycle cycle = cycles.get(i);
         if (cycle.isDead()) {
           continue;
@@ -47,15 +52,21 @@ public class LocalRunner {
         AI ai = ais.get(i);
         ai.updateDataLocalRunner(ais.size(), i, cyclesToData());
         Move move = ai.makeDecision();
-        if (!applyMove(cycle, move)) {
+        if (!applyMove(cycle, move, true)) {
           System.err.println(ai.name + " make invalid move " + move);
           cycle.kill();
           if (gameFinished()) {
             break;
           }
+        } else {
+          moves.put(cycle, move);
         }
-        gameBoard.update(cycles);
+
       }
+      for (Map.Entry<LightCycle, Move> entry : moves.entrySet()) {
+        applyMove(entry.getKey(), entry.getValue(), false);
+      }
+      gameBoard.update(cycles);
     }
 
     System.err.println(gameBoard);
@@ -73,7 +84,7 @@ public class LocalRunner {
     return alive <= 1;
   }
 
-  private boolean applyMove(LightCycle cycle, Move move) {
+  private boolean applyMove(LightCycle cycle, Move move, boolean emptyMove) {
     Point head = cycle.head;
     Point target = null;
     switch (move) {
@@ -93,7 +104,9 @@ public class LocalRunner {
     if (target == null || target.holder != -1) {
       return false;
     }
-    cycle.setHead(target);
+    if (!emptyMove) {
+      cycle.setHead(target);
+    }
     return true;
   }
 
@@ -114,7 +127,7 @@ public class LocalRunner {
     ais.add(new AI("THE FIRST", null));
     ais.add(new AI("THE SECOND", null));
     LocalRunner runner = new LocalRunner(ais);
-    runner.setStartPositions(new Point(0,0), new Point(12, 15));
+    runner.setStartPositions(new Point(2,14), new Point(28, 14));
     runner.start();
   }
 }
