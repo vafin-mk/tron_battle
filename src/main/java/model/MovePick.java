@@ -14,4 +14,9 @@ public class MovePick implements Comparable<MovePick> {
   public int compareTo(MovePick o) {
     return Integer.compare(o.priority, priority);
   }
+
+  @Override
+  public String toString() {
+    return move.name() + " -- " + priority;
+  }
 }

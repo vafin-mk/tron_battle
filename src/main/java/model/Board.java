@@ -6,102 +6,87 @@ import java.util.*;
 
 public class Board {
 
+  public static final int EMPTY = -1;
+
   final int WIDTH, HEIGHT;
 
-  private Map<Pair, Point> allPoints;
+  private Point[][] _board;
   private LightCycle closestEnemy;
   private LightCycle myCycle;
 
   public Board(int width, int height) {
     this.WIDTH = width;
     this.HEIGHT = height;
-    this.allPoints = new HashMap<>(WIDTH * HEIGHT);
+    this._board = new Point[WIDTH][HEIGHT];
     for (int x = 0; x < WIDTH; x++) {
       for (int y = 0; y < HEIGHT; y++) {
-        allPoints.put(new Pair(x, y), new Point(x, y));
+        _board[x][y] = new Point(x, y);
       }
     }
   }
 
-  public void update(List<LightCycle> cycles, LightCycle myCycle) {
-    int closestDist = 100000;
-    LightCycle closest = null;
-    for (LightCycle cycle : cycles) {
-      if (cycle.isDead()) {
-        allPoints.values().stream()
-            .filter(point -> point.holder == cycle.index)
-            .forEach(point -> point.holder = -1);
-      } else {
-        allPoints.get(cycle.currentPoint.pair).holder = cycle.index;
-        if (!cycle.me) {
-          int dist = cycle.currentPoint.manhattanDist(myCycle.currentPoint);
-          if (dist < closestDist) {
-            closestDist = dist;
-            closest = cycle;
+  public Point getPoint(int x, int y) {
+    if (x < 0 || x > WIDTH - 1 || y < 0 || y > HEIGHT - 1) {
+      return null;
+    }
+    return _board[x][y];
+  }
+
+  public void update(List<LightCycle> cycles) {
+    cycles.stream().filter(LightCycle::isDead).forEach(cycle -> {
+      for (Point[] row : _board) {
+        for (Point point : row) {
+          if (point.holder == cycle.index) {
+            point.holder = EMPTY;
           }
         }
       }
-    }
-    closestEnemy = closest;
-    this.myCycle = myCycle;
+    });
   }
 
   public List<Point> availableMoves(LightCycle cycle) {
     List<Point> res = new ArrayList<>();
-    Point from = cycle.currentPoint;
-    Point target = allPoints.get(from.pair.neighbour(Move.LEFT));
-    if (target != null && target.holder == -1) {
-      res.add(target);
-    }
-    target = allPoints.get(from.pair.neighbour(Move.UP));
-    if (target != null && target.holder == -1) {
-      res.add(target);
-    }
-    target = allPoints.get(from.pair.neighbour(Move.RIGHT));
-    if (target != null && target.holder == -1) {
-      res.add(target);
-    }
-    target = allPoints.get(from.pair.neighbour(Move.DOWN));
-    if (target != null && target.holder == -1) {
-      res.add(target);
-    }
+    Point from = cycle.head;
+    floodFill(from, res, 1);
     return res;
   }
 
-  public int availableEmptyPoints(LightCycle cycle) {
-    Point start = cycle.currentPoint;
+  public List<Point> findAvailablePoints(LightCycle cycle, int range) {
+    Point start = cycle.head;
     List<Point> res = new ArrayList<>();
-    addAvailablePoint(allPoints.get(start.pair.neighbour(Move.LEFT)), res);
-    addAvailablePoint(allPoints.get(start.pair.neighbour(Move.UP)), res);
-    addAvailablePoint(allPoints.get(start.pair.neighbour(Move.RIGHT)), res);
-    addAvailablePoint(allPoints.get(start.pair.neighbour(Move.DOWN)), res);
-    return res.size();
+    floodFill(start, res, range);
+    return res;
   }
 
-  private void addAvailablePoint(Point point, List<Point> points) {
-    if (point == null || point.holder != -1 || points.contains(point)) {
+  private void addAvailablePoint(Point point, List<Point> points, int maxRange) {
+    if (point == null || point.holder != -1 || points.contains(point) || maxRange == 0) {
       return;
     }
     points.add(point);
-    addAvailablePoint(allPoints.get(point.pair.neighbour(Move.LEFT)), points);
-    addAvailablePoint(allPoints.get(point.pair.neighbour(Move.UP)), points);
-    addAvailablePoint(allPoints.get(point.pair.neighbour(Move.RIGHT)), points);
-    addAvailablePoint(allPoints.get(point.pair.neighbour(Move.DOWN)), points);
+    floodFill(point, points, maxRange - 1);
+  }
+
+  private void floodFill(Point point, List<Point> points, int range) {
+    addAvailablePoint(getPoint(point.x - 1, point.y), points, range);//left
+    addAvailablePoint(getPoint(point.x, point.y - 1), points, range);//up
+    addAvailablePoint(getPoint(point.x + 1, point.y), points, range);//right
+    addAvailablePoint(getPoint(point.x, point.y + 1), points, range);//down
   }
 
   public int evaluate(LightCycle cycle) {
-    return cycle.me ? availableEmptyPoints(cycle) : -availableEmptyPoints(cycle);
+    return findAvailablePoints(cycle, 100).size();
   }
 
   public Move bestMove() {
+    //// FIXME: 21.12.16 minimax alpha beta cutoff doesn't work
     return minimax(AI.PREDICTION_DEPTH, myCycle, new int[] {Integer.MIN_VALUE}, new int[] {Integer.MAX_VALUE}).move;
+
   }
 
   //minimax with alpha/beta pruning
   //https://www.ntu.edu.sg/home/ehchua/programming/java/JavaGame_TicTacToe_AI.html
   private MovePick minimax(int depth, LightCycle cycle, int[] alpha, int[] beta) {
-    System.err.println("DEPTH:" + depth + "|alpha=" + alpha[0] + "|beta=" + beta[0]);
-    Point curr = cycle.currentPoint;
+    Point curr = cycle.head;
     List<Point> available = availableMoves(cycle);
     Point best = null;
     if (available.isEmpty() || depth == 0) {
@@ -113,7 +98,7 @@ public class Board {
           best = point;
         }
         //apply
-        cycle.addHoldedPosition(point);
+        cycle.setHead(point);
 
         if (cycle.me) {//maximize
           int score = minimax(depth - 1, closestEnemy, alpha, beta).priority;
@@ -130,7 +115,7 @@ public class Board {
         }
         //undo
         point.holder = -1;
-        cycle.currentPoint = curr;
+        cycle.setHead(curr);
 
         if (alpha[0] >= beta[0]) {
           break;
@@ -140,4 +125,35 @@ public class Board {
     }
   }
 
+  @Override
+  public String toString() {
+    StringBuilder builder = new StringBuilder();
+    for (int y = 0; y < HEIGHT; y++) {
+      for (int x = 0; x < WIDTH; x++) {
+        builder.append("|");
+        switch (_board[x][y].holder) {
+          case -1:
+            builder.append(" ");
+            break;
+          case 0:
+            builder.append("!");
+            break;
+          case 1:
+            builder.append("?");
+            break;
+          case 2:
+            builder.append("&");
+            break;
+          case 3:
+            builder.append("%");
+            break;
+          default:
+            builder.append("#");
+            break;
+        }
+      }
+      builder.append("|\n");
+    }
+    return builder.toString();
+  }
 }

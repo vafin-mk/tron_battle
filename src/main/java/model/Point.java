@@ -2,20 +2,12 @@ package model;
 
 public class Point {
 
-  public int x;
-  public int y;
+  public final int x;
+  public final int y;
   public int holder = -1;
-  public Pair pair;
   public Point(int x, int y) {
     this.x = x;
     this.y = y;
-    pair = new Pair(x, y);
-  }
-
-  public void update(int x, int y) {
-    this.x = x;
-    this.y = y;
-    pair = new Pair(x, y);
   }
 
   public int manhattanDist(Point other) {
@@ -34,5 +26,10 @@ public class Point {
   @Override
   public int hashCode() {
     return 31 * x + y;
+  }
+
+  @Override
+  public String toString() {
+    return String.format("Point(%s|%s)", x, y);
   }
 }
