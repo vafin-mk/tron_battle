@@ -103,6 +103,7 @@ public class Grid {
 
     Map<Cycle, List<Cell>> starters = new HashMap<>();
     for (Cycle cycle : cycles) {
+      if (cycle.dead()) continue;
       starters.put(cycle, new ArrayList<>());
       if (cycle.index == myIndex) {
         starters.get(cycle).addAll(neighbours.get(from));
