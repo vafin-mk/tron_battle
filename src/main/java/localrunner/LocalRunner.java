@@ -1,10 +1,7 @@
 package localrunner;
 
 import ai.AI;
-import model.Board;
-import model.LightCycle;
-import model.Move;
-import model.Point;
+import model.*;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -14,27 +11,27 @@ import java.util.Map;
 public class LocalRunner {
 
   private List<AI> ais;
-  private List<LightCycle> cycles;
-  private Board gameBoard;
+  private List<Cycle> cycles;
+  private Grid gameBoard;
 
   LocalRunner(List<AI> ais) {
     this.ais = ais;
     cycles = new ArrayList<>(ais.size());
     for (int i = 0; i < ais.size(); i++) {
-      cycles.add(new LightCycle(i, 100500));
+      cycles.add(new Cycle(i));
     }
-    gameBoard = new Board(30, 20);
+    gameBoard = new Grid(ais.size(), 100500);
   }
 
-  public void setStartPositions(Point...points) {
-    for (int i = 0; i < points.length; i++) {
-      cycles.get(i).setStart(gameBoard.getPoint(points[i].x, points[i].y));
-      cycles.get(i).setHead(gameBoard.getPoint(points[i].x, points[i].y));
+  public void setStartPositions(Cell... cells) {
+    for (int i = 0; i < cells.length; i++) {
+      cycles.get(i).start = new Cell(cells[i].x, cells[i].y);
+      cycles.get(i).head = new Cell(cells[i].x, cells[i].y);
     }
   }
 
   public void start() {
-    Map<LightCycle, Move> moves = new HashMap<>();
+    Map<Cycle, Move> moves = new HashMap<>();
     int round = 1;
     while (!gameFinished()) {
       moves.clear();
@@ -45,16 +42,18 @@ public class LocalRunner {
       System.err.println(cycles);
       for (int i = 0; i < ais.size(); i++) {
         System.err.println("   ROUND " + round++);
-        LightCycle cycle = cycles.get(i);
-        if (cycle.isDead()) {
+        Cycle cycle = cycles.get(i);
+        if (cycle.dead()) {
           continue;
         }
         AI ai = ais.get(i);
         ai.updateDataLocalRunner(ais.size(), i, cyclesToData());
         Move move = ai.makeDecision();
         if (!applyMove(cycle, move, true)) {
+          System.err.println(gameBoard);
           System.err.println(ai.name + " make invalid move " + move);
-          cycle.kill();
+          cycle.start = new Cell(-1, -1);
+          cycle.head = new Cell(-1, -1);
           if (gameFinished()) {
             break;
           }
@@ -63,49 +62,52 @@ public class LocalRunner {
         }
 
       }
-      for (Map.Entry<LightCycle, Move> entry : moves.entrySet()) {
+      for (Map.Entry<Cycle, Move> entry : moves.entrySet()) {
         applyMove(entry.getKey(), entry.getValue(), false);
       }
       gameBoard.update(cycles);
     }
 
     System.err.println(gameBoard);
-    AI winner = ais.get(cycles.stream().filter(cycle -> !cycle.isDead()).findFirst().get().index);
+    AI winner = ais.get(cycles.stream().filter(cycle -> !cycle.dead()).findFirst().get().index);
     System.err.println("WINNER IS " + winner.name);
   }
 
   private boolean gameFinished() {
     int alive = 0;
-    for (LightCycle cycle : cycles) {
-      if (!cycle.isDead()){
+    for (Cycle cycle : cycles) {
+      if (!cycle.dead()){
         alive++;
       }
     }
     return alive <= 1;
   }
 
-  private boolean applyMove(LightCycle cycle, Move move, boolean emptyMove) {
-    Point head = cycle.head;
-    Point target = null;
-    switch (move) {
-      case LEFT:
-        target = gameBoard.getPoint(head.x - 1, head.y);
+  private boolean applyMove(Cycle cycle, Move move, boolean emptyMove) {
+    Cell head = cycle.head;
+    Cell target = null;
+    switch (move.command) {
+      case "LEFT":
+        target = new Cell(head.x - 1, head.y);
         break;
-      case UP:
-        target = gameBoard.getPoint(head.x, head.y - 1);
+      case "UP":
+        target = new Cell(head.x, head.y - 1);
         break;
-      case RIGHT:
-        target = gameBoard.getPoint(head.x + 1, head.y);
+      case "RIGHT":
+        target = new Cell(head.x + 1, head.y);
         break;
-      case DOWN:
-        target = gameBoard.getPoint(head.x, head.y + 1);
+      case "DOWN":
+        target = new Cell(head.x, head.y + 1);
         break;
     }
-    if (target == null || target.holder != -1) {
+    if (target == null
+        || target.x < 0 || target.x >= Constants.GRID_WIDTH
+        || target.y < 0 || target.y >= Constants.GRID_HEIGHT
+        || gameBoard.blocked(target)) {
       return false;
     }
     if (!emptyMove) {
-      cycle.setHead(target);
+      cycle.head = target;
     }
     return true;
   }
@@ -113,7 +115,7 @@ public class LocalRunner {
   private int[][] cyclesToData() {
     int[][] res = new int[cycles.size()][4];
     for (int i = 0; i < cycles.size(); i++) {
-      LightCycle cycle = cycles.get(i);
+      Cycle cycle = cycles.get(i);
       res[i][0] = cycle.start.x;
       res[i][1] = cycle.start.y;
       res[i][2] = cycle.head.x;
@@ -127,7 +129,7 @@ public class LocalRunner {
     ais.add(new AI("THE FIRST", null));
     ais.add(new AI("THE SECOND", null));
     LocalRunner runner = new LocalRunner(ais);
-    runner.setStartPositions(new Point(2,14), new Point(28, 14));
+    runner.setStartPositions(new Cell(2,14), new Cell(28, 14));
     runner.start();
   }
 }

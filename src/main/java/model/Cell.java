@@ -1,17 +1,13 @@
 package model;
 
-public class Point {
+public class Cell {
 
   public final int x;
   public final int y;
-  public int holder = -1;
-  public Point(int x, int y) {
+
+  public Cell(int x, int y) {
     this.x = x;
     this.y = y;
-  }
-
-  public int manhattanDist(Point other) {
-    return StrictMath.abs(other.x - x) + StrictMath.abs(other.y - y);
   }
 
   @Override
@@ -19,17 +15,22 @@ public class Point {
     if (this == o) return true;
     if (o == null || getClass() != o.getClass()) return false;
 
-    Point point = (Point) o;
-    return x == point.x && y == point.y;
+    Cell cell = (Cell) o;
+
+    if (x != cell.x) return false;
+    return y == cell.y;
+
   }
 
   @Override
   public int hashCode() {
-    return 31 * x + y;
+    int result = x;
+    result = 31 * result + y;
+    return result;
   }
 
   @Override
   public String toString() {
-    return String.format("Point(%s|%s)", x, y);
+    return "Cell("+x+"|"+y+")";
   }
 }

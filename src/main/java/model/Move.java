@@ -1,22 +1,37 @@
 package model;
 
-import java.util.Random;
+public class Move implements Comparable<Move>{
 
-public enum Move {
-  LEFT, UP, RIGHT, DOWN;
+  public final String command;
+  int priority = -1;
+  private Move(String command) {
+    this.command = command;
+  }
+
+  public void setPriority(int priority) {
+    this.priority = priority;
+  }
 
   public void execute() {
-    System.out.println(name());
+    System.out.println(command);
   }
 
-  public static Move random(Random rnd) {
-    return values()[rnd.nextInt(values().length)];
+  public static Move byCells(Cell current, Cell target) {
+    int dx = current.x - target.x;
+    if (dx > 0) return new Move("LEFT");
+    if (dx < 0) return new Move("RIGHT");
+    int dy = current.y - target.y;
+    if (dy > 0) return new Move("UP");
+    return new Move("DOWN");
   }
 
-  public static Move byPoints(Point current, Point target) {
-    if (target.x > current.x) return RIGHT;
-    if (target.x < current.x) return LEFT;
-    if (target.y < current.y) return UP;
-    return DOWN;
+  @Override
+  public int compareTo(Move o) {
+    return Integer.compare(priority, o.priority);
+  }
+
+  @Override
+  public String toString() {
+    return command + " - " + priority;
   }
 }

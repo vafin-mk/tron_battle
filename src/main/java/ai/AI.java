@@ -6,24 +6,19 @@ import java.util.*;
 
 public class AI {
 
-  public static final int WIDTH = 30;
-  public static final int HEIGHT = 20;
-  public static final int PREDICTION_DEPTH = 100;
-
-  List<LightCycle> cycles = new ArrayList<>();
-  LightCycle myCycle;
-
-  private final Board board;
-  private boolean firstIteration = true;
-
   final Scanner scanner;
-  final Random rnd;
   public final String name;
+  private Grid grid;
+  private List<Cycle> cycles = new ArrayList<>();
+  private int round;
+
+  private int myIndex;
+
+  private Queue<Move> moves = new PriorityQueue<>(Comparator.reverseOrder());
+
   public AI(String name, Scanner scanner) {
     this.name = name;
     this.scanner = scanner;
-    this.rnd = new Random();
-    this.board = new Board(WIDTH, HEIGHT);
   }
 
   public void start() {
@@ -35,71 +30,58 @@ public class AI {
       start = System.nanoTime();
       makeDecision().execute();
       System.err.println(String.format("DECISION IN %s ms", (System.nanoTime() - start)/1000000));
+      round++;
     }
   }
 
   public void updateData() {
     int playersCount = scanner.nextInt();
-    int myIndex = scanner.nextInt();
+    myIndex = scanner.nextInt();
+    if (grid == null) {
+      grid = new Grid(playersCount, myIndex);
+    }
     for (int index = 0; index < playersCount; index++) {
+      if (round == 0) {
+        cycles.add(new Cycle(index));
+      }
       int X0 = scanner.nextInt();
       int Y0 = scanner.nextInt();
       int X1 = scanner.nextInt();
       int Y1 = scanner.nextInt();
-      if (firstIteration) {
-        LightCycle cycle = new LightCycle(index, myIndex);
-        cycles.add(cycle);
-      }
-      LightCycle cycle = cycles.get(index);
-      cycle.setStart(board.getPoint(X0, Y0));
-      cycle.setHead(board.getPoint(X1, Y1));
+      cycles.get(index).start = new Cell(X0, Y0);
+      cycles.get(index).head = new Cell(X1, Y1);
     }
-    if (firstIteration) {
-      myCycle = cycles.get(myIndex);
-      firstIteration = false;
-    }
-    board.update(cycles);
+    grid.update(cycles);
+    round++;
   }
 
   public void updateDataLocalRunner(int playersCount, int myIndex, int[]...cyclesData) {
+    this.myIndex = myIndex;
+    if (grid == null) {
+      grid = new Grid(playersCount, myIndex);
+    }
     for (int i = 0; i < playersCount; i++) {
-      System.err.println(Arrays.toString(cyclesData[i]));
-      if (firstIteration) {
-        LightCycle cycle = new LightCycle(i, myIndex);
-        cycles.add(cycle);
+      if (round == 0) {
+        cycles.add(new Cycle(i));
       }
-      LightCycle cycle = cycles.get(i);
-      cycle.setStart(board.getPoint(cyclesData[i][0], cyclesData[i][1]));
-      cycle.setHead(board.getPoint(cyclesData[i][2], cyclesData[i][3]));
+      cycles.get(i).start = new Cell(cyclesData[i][0], cyclesData[i][1]);
+      cycles.get(i).head = new Cell(cyclesData[i][2], cyclesData[i][3]);
     }
-    if (firstIteration) {
-      myCycle = cycles.get(myIndex);
-      firstIteration = false;
-    }
-    board.update(cycles);
+    grid.update(cycles);
+    round++;
   }
 
   public Move makeDecision() {
-    Queue<MovePick> commands = new PriorityQueue<>();
-    Point start = myCycle.head;
-    for (Point point : board.availableMoves(myCycle)) {
-      //apply
-      myCycle.setHead(point);
-
-      Move move = Move.byPoints(start, point);
-      commands.add(new MovePick(move, board.evaluate(myCycle) + move.ordinal()));
-
-      //undo
-      point.holder = -1;
-      myCycle.head = start;
+    moves.clear();
+    Cycle myCycle = cycles.get(myIndex);
+    Cell currentHead = myCycle.head;
+    for (Cell neighbour : grid.neighbours.get(currentHead)) {
+      Move move = Move.byCells(currentHead, neighbour);
+//      grid.applyMove(myCycle, neighbour);
+      move.setPriority(grid.evaluateCell(neighbour));
+//      grid.redoMove(myCycle, currentHead);
+      moves.add(move);
     }
-    System.err.println("Commands - " + Arrays.toString(commands.toArray()));
-    MovePick best = commands.poll();
-    System.err.println("BEST MOVE:" + best);
-    if (best == null) {
-      System.err.println("GG, NO MOVE");
-      return Move.UP;
-    }
-    return best.move;
+    return moves.poll();
   }
 }
