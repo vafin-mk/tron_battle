@@ -26,10 +26,14 @@ public class AI {
     while (true) {
       start = System.nanoTime();
       updateData();
-      System.err.println(String.format("UPDATE IN %s ms", (System.nanoTime() - start)/1000000));
+      if (Constants.DEBUG) {
+        System.err.println(String.format("UPDATE IN %s ms", (System.nanoTime() - start) / 1000000));
+      }
       start = System.nanoTime();
       makeDecision().execute();
-      System.err.println(String.format("DECISION IN %s ms", (System.nanoTime() - start)/1000000));
+      if (Constants.DEBUG) {
+        System.err.println(String.format("DECISION IN %s ms", (System.nanoTime() - start) / 1000000));
+      }
       round++;
     }
   }
@@ -81,6 +85,9 @@ public class AI {
       move.setPriority(grid.evaluateCell(neighbour));
 //      grid.redoMove(myCycle, currentHead);
       moves.add(move);
+    }
+    if (Constants.DEBUG) {
+      System.err.println(Arrays.toString(moves.toArray()));
     }
     return moves.poll();
   }

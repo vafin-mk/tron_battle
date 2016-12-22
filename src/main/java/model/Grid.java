@@ -54,6 +54,7 @@ public class Grid {
       }
       if (!occupiedCells.containsKey(cycle)) {
         occupiedCells.put(cycle, new HashSet<>());
+        occupiedCells.get(cycle).add(cycle.start);
       }
       occupiedCells.get(cycle).add(cycle.head);
     }
@@ -86,6 +87,13 @@ public class Grid {
     if (blocked(neighbour)) return Integer.MIN_VALUE;
     int[] belongCells = calculateBelongCells(neighbour);
 
+    if (Constants.DEBUG) {
+      System.err.println("--------------");
+      System.err.println("Evaluate for:" + neighbour);
+      System.err.println("My cells:" + belongCells[0]);
+      System.err.println("Enemy cells:" + belongCells[1]);
+      System.err.println("Enemy dists:" + belongCells[2]);
+    }
     return belongCells[0] * Constants.MY_BELONG_CELLS_COEFFICIENT
         + belongCells[1] * Constants.ENEMY_BELONG_CELLS_COEFFICIENT
         + belongCells[2] * Constants.ENEMY_BELONG_CELLS_DISTS_COEFFICIENT;
