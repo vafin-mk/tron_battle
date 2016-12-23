@@ -248,14 +248,15 @@ public class Grid {
   //minimax https://en.wikipedia.org/wiki/Minimax
   //with alpha-beta pruning https://en.wikipedia.org/wiki/Alpha%E2%80%93beta_pruning
   private int minimax(Cell cell, int depth, int[] alpha, int[] beta, Cycle cycle) {
-    if (depth == 0 || blocked(cell)) {
-      return calculateBelongCellsPriority(cell); //todo blocked ?
+    if (depth == 0) {
+      return calculateBelongCellsPriority(cell); //todo win loss priority!
     }
     Cell oldHead = cycle.head;
     applyMove(cycle, cell);
     if (cycle.index == myIndex) { //maximize
       int bestValue = Integer.MIN_VALUE;
       for (Cell child : neighbours.get(cell)) {
+        if (blocked(child)) continue;
         int value = minimax(child, depth - 1, alpha, beta, closestEnemyCycle());
         alpha[0] = StrictMath.max(value, alpha[0]);
         bestValue = StrictMath.max(value, bestValue);
@@ -266,6 +267,7 @@ public class Grid {
     } else { //enemy - minimize
       int bestValue = Integer.MAX_VALUE;
       for (Cell child : neighbours.get(cell)) {
+        if (blocked(child)) continue;
         int value = minimax(child, depth - 1, alpha, beta, cycles.get(myIndex));
         beta[0] = StrictMath.min(value, beta[0]);
         bestValue = StrictMath.min(value, bestValue);
@@ -298,15 +300,22 @@ public class Grid {
 
   private int wallHuggingPriority(Cell cell) {
     int value = 0;
+    //for hugging blocked cells by me have more priority,
+    // cause there always opportunity enemy dies
+    //and blocks will removed!
+    int myBlocks = 0;
     for (Cell neigh : neighbours.get(cell)) {
       if (blocked(neigh)) {
+        if (occupiedCells.get(cycles.get(myIndex)).contains(neigh)) {
+          myBlocks++;
+        }
         value++;
       }
     }
     if (value > 3) {//dead end!
       return -1;
     }
-    return value;
+    return value + myBlocks;
   }
 
   @Override
