@@ -82,9 +82,7 @@ public class AI {
     EvaluationStrategy strategy = findBestStrategy();
     for (Cell neighbour : grid.neighbours.get(currentHead)) {
       Move move = Move.byCells(currentHead, neighbour);
-//      grid.applyMove(myCycle, neighbour);
       move.setPriority(grid.evaluateCell(neighbour, strategy));
-//      grid.redoMove(myCycle, currentHead);
       moves.add(move);
     }
     if (Constants.DEBUG) {
@@ -98,9 +96,9 @@ public class AI {
     if (distToClosestEnemy < 0) {//unreachable
       return EvaluationStrategy.SURVIVAL;
     }
-//    if (distToClosestEnemy <= Constants.MINIMAX_DEPTH) {
-//      return EvaluationStrategy.MINIMAX;
-//    }
+    if (distToClosestEnemy <= Constants.MINIMAX_DEPTH) {
+      return EvaluationStrategy.MINIMAX;
+    }
 
     return EvaluationStrategy.NORMAL;
   }

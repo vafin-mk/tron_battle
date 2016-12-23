@@ -46,10 +46,12 @@ public class LocalRunner {
         }
         AI ai = ais.get(i);
         ai.updateDataLocalRunner(ais.size(), i, cyclesToData());
+        long start = System.nanoTime();
         Move move = ai.makeDecision();
-        if (!applyMove(cycle, move)) {
+        long time = (System.nanoTime() - start) / 1000000;
+        if (!applyMove(cycle, move) || time > 100) {
           System.err.println(gameBoard);
-          System.err.println(ai.name + " make invalid move " + move);
+          System.err.println(ai.name + " make invalid move " + move + " in " + time + " ms!");
           cycle.start = new Cell(-1, -1);
           cycle.head = new Cell(-1, -1);
           if (gameFinished()) {

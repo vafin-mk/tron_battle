@@ -152,6 +152,7 @@ public class Grid {
       case SURVIVAL: return calculateSurvivalPriority(neighbour);
     }
 
+    System.err.println("BRAND NEW STRATEGY?: " + evaluationStrategy);
     return 0;//ERROR!
   }
 
@@ -238,12 +239,61 @@ public class Grid {
   }
 
   private int calculateMinimaxPriority(Cell cell) {
-    return 0;
+    int minimaxValue =
+        minimax(cell, Constants.MINIMAX_DEPTH, new int[]{Integer.MIN_VALUE}, new int[]{Integer.MAX_VALUE}, cycles.get(myIndex))
+            * Constants.MINIMAX_COEFFICIENT;
+    return minimaxValue;
+  }
+
+  //minimax https://en.wikipedia.org/wiki/Minimax
+  //with alpha-beta pruning https://en.wikipedia.org/wiki/Alpha%E2%80%93beta_pruning
+  private int minimax(Cell cell, int depth, int[] alpha, int[] beta, Cycle cycle) {
+    if (depth == 0 || blocked(cell)) {
+      return calculateBelongCellsPriority(cell); //todo blocked ?
+    }
+    Cell oldHead = cycle.head;
+    applyMove(cycle, cell);
+    if (cycle.index == myIndex) { //maximize
+      int bestValue = Integer.MIN_VALUE;
+      for (Cell child : neighbours.get(cell)) {
+        int value = minimax(child, depth - 1, alpha, beta, closestEnemyCycle());
+        alpha[0] = StrictMath.max(value, alpha[0]);
+        bestValue = StrictMath.max(value, bestValue);
+        if (alpha[0] >= beta[0]) break;
+      }
+      redoMove(cycle, oldHead);
+      return bestValue;
+    } else { //enemy - minimize
+      int bestValue = Integer.MAX_VALUE;
+      for (Cell child : neighbours.get(cell)) {
+        int value = minimax(child, depth - 1, alpha, beta, cycles.get(myIndex));
+        beta[0] = StrictMath.min(value, beta[0]);
+        bestValue = StrictMath.min(value, bestValue);
+        if (alpha[0] >= beta[0]) break;
+      }
+      redoMove(cycle, oldHead);
+      return bestValue;
+    }
+  }
+
+  private Cycle closestEnemyCycle() {
+    Cycle closest = null;
+    int closestDist = Constants.MINIMAX_DEPTH;
+    for (Map.Entry<Cycle, Integer> enemyEntry : distancesToEnemies.entrySet()) {
+      if (enemyEntry.getValue() == -1) {
+        continue;
+      }
+      if (enemyEntry.getValue() <= closestDist) {
+        closestDist = enemyEntry.getValue();
+        closest = enemyEntry.getKey();
+      }
+    }
+    return closest;
   }
 
   private int calculateSurvivalPriority(Cell cell) {
     return wallHuggingPriority(cell) * Constants.WALL_HUGG_COEFFICIENT
-        +calculateBelongCells(cell)[0];//my cells
+        + calculateBelongCells(cell)[0];//my cells
   }
 
   private int wallHuggingPriority(Cell cell) {
