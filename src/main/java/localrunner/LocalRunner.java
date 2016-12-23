@@ -20,7 +20,7 @@ public class LocalRunner {
     for (int i = 0; i < ais.size(); i++) {
       cycles.add(new Cycle(i));
     }
-    gameBoard = new Grid(ais.size(), 100500);
+    gameBoard = new Grid(ais.size(), 10000);
   }
 
   public void setStartPositions(Cell... cells) {
@@ -31,10 +31,8 @@ public class LocalRunner {
   }
 
   public void start() {
-    Map<Cycle, Move> moves = new HashMap<>();
     int round = 1;
     while (!gameFinished()) {
-      moves.clear();
       if (round % 20 == 0) {
         System.err.println(gameBoard);
       }
@@ -49,7 +47,7 @@ public class LocalRunner {
         AI ai = ais.get(i);
         ai.updateDataLocalRunner(ais.size(), i, cyclesToData());
         Move move = ai.makeDecision();
-        if (!applyMove(cycle, move, true)) {
+        if (!applyMove(cycle, move)) {
           System.err.println(gameBoard);
           System.err.println(ai.name + " make invalid move " + move);
           cycle.start = new Cell(-1, -1);
@@ -57,17 +55,16 @@ public class LocalRunner {
           if (gameFinished()) {
             break;
           }
-        } else {
-          moves.put(cycle, move);
         }
-
+        gameBoard.update(cycles);
       }
-      for (Map.Entry<Cycle, Move> entry : moves.entrySet()) {
-        applyMove(entry.getKey(), entry.getValue(), false);
+      if(round > 1500){
+        System.err.println("Fuck up");
+        break;
       }
-      gameBoard.update(cycles);
     }
 
+    gameBoard.update(cycles);
     System.err.println(gameBoard);
     AI winner = ais.get(cycles.stream().filter(cycle -> !cycle.dead()).findFirst().get().index);
     System.err.println("WINNER IS " + winner.name);
@@ -83,7 +80,7 @@ public class LocalRunner {
     return alive <= 1;
   }
 
-  private boolean applyMove(Cycle cycle, Move move, boolean emptyMove) {
+  private boolean applyMove(Cycle cycle, Move move) {
     Cell head = cycle.head;
     Cell target = null;
     switch (move.command) {
@@ -106,9 +103,7 @@ public class LocalRunner {
         || gameBoard.blocked(target)) {
       return false;
     }
-    if (!emptyMove) {
-      cycle.head = target;
-    }
+    cycle.head = target;
     return true;
   }
 

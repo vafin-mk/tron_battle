@@ -30,4 +30,9 @@ public class Cycle {
   public int hashCode() {
     return index;
   }
+
+  @Override
+  public String toString() {
+    return String.format("Cycle[index=%s, dead=%s, head=%s, start=%s]", index, dead(), head, start);
+  }
 }

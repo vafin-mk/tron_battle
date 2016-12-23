@@ -7,6 +7,7 @@ public class Grid {
   private List<Cell> cells = new ArrayList<>();
   private Map<Cycle, Set<Cell>> occupiedCells = new HashMap<>();
   public Map<Cell, Set<Cell>> neighbours = new HashMap<>();
+  private Map<Cycle, Integer> distancesToEnemies;
 
   private List<Cycle> cycles;
   private int myIndex;
@@ -43,20 +44,79 @@ public class Grid {
       checkOrder.add(index);
       index++;
     }
-
   }
 
   public void update(List<Cycle> cycles) {
     this.cycles = cycles;
+
+    if (distancesToEnemies == null) {
+      distancesToEnemies = new HashMap<>();
+      for (Cycle cycle : cycles) {
+        if (cycle.index == myIndex) {
+          continue;
+        }
+        distancesToEnemies.put(cycle, -1);
+      }
+    }
+
     for (Cycle cycle : cycles) {
       if (cycle.dead()) {
         occupiedCells.remove(cycle);
+        distancesToEnemies.remove(cycle);
+        continue;
       }
       if (!occupiedCells.containsKey(cycle)) {
         occupiedCells.put(cycle, new HashSet<>());
         occupiedCells.get(cycle).add(cycle.start);
       }
       occupiedCells.get(cycle).add(cycle.head);
+    }
+    if (myIndex < 10) {//local runner
+      updateDistancesToEnemies();
+    }
+  }
+
+  private void updateDistancesToEnemies() {
+    if (distancesToEnemies.isEmpty()) return;
+    for (Cycle cycle : distancesToEnemies.keySet()) {
+      if (cycle.index == myIndex || cycle.dead()) {
+        continue;
+      }
+      distancesToEnemies.put(cycle, -1);
+    }
+    Set<Cell> checkedCells = new HashSet<>(allOccupiedCells());
+    int dist = 0;
+    int updatedEnemies = 0;
+    boolean checkedEveryCell;
+
+    List<Cell> starters = new ArrayList<>();
+    starters.add(cycles.get(myIndex).head);
+
+    while (true) {
+      checkedEveryCell = true;
+
+      Set newCells = new HashSet();
+      for (Cell cell : starters) {
+        for (Cycle cycle : distancesToEnemies.keySet()) {
+          if (cell.equals(cycle.head)) {
+            int currDist = distancesToEnemies.get(cycle);
+            if (currDist == -1) {
+              distancesToEnemies.put(cycle, dist);
+              updatedEnemies++;
+            }
+          }
+        }
+        if (checkedCells.contains(cell) && dist > 0) continue;
+        checkedEveryCell = false;
+        checkedCells.add(cell);
+        newCells.addAll(neighbours.get(cell));
+      }
+      starters.clear();
+      starters.addAll(newCells);
+      newCells.clear();
+
+      if (checkedEveryCell || updatedEnemies == distancesToEnemies.size()) break;
+      dist++;
     }
   }
 
@@ -83,13 +143,24 @@ public class Grid {
     cycle.head = oldHead;
   }
 
-  public int evaluateCell(Cell neighbour) {
+  public int evaluateCell(Cell neighbour, EvaluationStrategy evaluationStrategy) {
     if (blocked(neighbour)) return Integer.MIN_VALUE;
-    int[] belongCells = calculateBelongCells(neighbour);
+
+    switch (evaluationStrategy) {
+      case NORMAL: return calculateBelongCellsPriority(neighbour);
+      case MINIMAX: return calculateMinimaxPriority(neighbour);
+      case SURVIVAL: return calculateSurvivalPriority(neighbour);
+    }
+
+    return 0;//ERROR!
+  }
+
+  private int calculateBelongCellsPriority(Cell cell) {
+    int[] belongCells = calculateBelongCells(cell);
 
     if (Constants.DEBUG) {
       System.err.println("--------------");
-      System.err.println("Evaluate for:" + neighbour);
+      System.err.println("Evaluate for:" + cell);
       System.err.println("My cells:" + belongCells[0]);
       System.err.println("Enemy cells:" + belongCells[1]);
       System.err.println("Enemy dists:" + belongCells[2]);
@@ -148,6 +219,44 @@ public class Grid {
     }
 
     return new int[] {myCells, enemyCells, enemyDists};
+  }
+
+  public int closestDistanceToEnemy() {
+    if (Constants.DEBUG) {
+      distancesToEnemies.forEach((cycle, dist) -> System.err.println(cycle + " --> " + dist));
+    }
+    int minDist = Integer.MAX_VALUE;
+    for (Integer dist : distancesToEnemies.values()) {
+      if (dist > 0 && dist < minDist) {
+        minDist = dist;
+      }
+    }
+    if (minDist == Integer.MAX_VALUE) {
+      return -1;
+    }
+    return minDist;
+  }
+
+  private int calculateMinimaxPriority(Cell cell) {
+    return 0;
+  }
+
+  private int calculateSurvivalPriority(Cell cell) {
+    return wallHuggingPriority(cell) * Constants.WALL_HUGG_COEFFICIENT
+        +calculateBelongCells(cell)[0];//my cells
+  }
+
+  private int wallHuggingPriority(Cell cell) {
+    int value = 0;
+    for (Cell neigh : neighbours.get(cell)) {
+      if (blocked(neigh)) {
+        value++;
+      }
+    }
+    if (value > 3) {//dead end!
+      return -1;
+    }
+    return value;
   }
 
   @Override

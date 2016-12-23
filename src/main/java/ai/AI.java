@@ -79,10 +79,11 @@ public class AI {
     moves.clear();
     Cycle myCycle = cycles.get(myIndex);
     Cell currentHead = myCycle.head;
+    EvaluationStrategy strategy = findBestStrategy();
     for (Cell neighbour : grid.neighbours.get(currentHead)) {
       Move move = Move.byCells(currentHead, neighbour);
 //      grid.applyMove(myCycle, neighbour);
-      move.setPriority(grid.evaluateCell(neighbour));
+      move.setPriority(grid.evaluateCell(neighbour, strategy));
 //      grid.redoMove(myCycle, currentHead);
       moves.add(move);
     }
@@ -90,5 +91,17 @@ public class AI {
       System.err.println(Arrays.toString(moves.toArray()));
     }
     return moves.poll();
+  }
+
+  private EvaluationStrategy findBestStrategy() {
+    int distToClosestEnemy = grid.closestDistanceToEnemy();
+    if (distToClosestEnemy < 0) {//unreachable
+      return EvaluationStrategy.SURVIVAL;
+    }
+//    if (distToClosestEnemy <= Constants.MINIMAX_DEPTH) {
+//      return EvaluationStrategy.MINIMAX;
+//    }
+
+    return EvaluationStrategy.NORMAL;
   }
 }
