@@ -52,6 +52,10 @@ public class AI {
       int Y0 = scanner.nextInt();
       int X1 = scanner.nextInt();
       int Y1 = scanner.nextInt();
+      if (Constants.DEBUG) {
+        System.err.println("***********");
+        System.err.println(String.format("index=%s, X0=%s,Y0=%s, X1=%s, Y1=%s", index, X0, Y0, X1, Y1));
+      }
       cycles.get(index).start = new Cell(X0, Y0);
       cycles.get(index).head = new Cell(X1, Y1);
     }

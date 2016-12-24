@@ -248,6 +248,9 @@ public class Grid {
   //minimax https://en.wikipedia.org/wiki/Minimax
   //with alpha-beta pruning https://en.wikipedia.org/wiki/Alpha%E2%80%93beta_pruning
   private int minimax(Cell cell, int depth, int[] alpha, int[] beta, Cycle cycle) {
+    if (deadEnd(cell)) {
+      return Integer.MIN_VALUE + 1; //still better than walls!
+    }
     if (depth == 0) {
       return calculateBelongCellsPriority(cell); //todo win loss priority!
     }
@@ -299,6 +302,9 @@ public class Grid {
   }
 
   private int wallHuggingPriority(Cell cell) {
+    if (deadEnd(cell)) {
+      return -1;
+    }
     int value = 0;
     //for hugging blocked cells by me have more priority,
     // cause there always opportunity enemy dies
@@ -312,10 +318,20 @@ public class Grid {
         value++;
       }
     }
-    if (value > 3) {//dead end!
-      return -1;
-    }
+//    if (value > 3) {//dead end!
+//      return -1;
+//    }
     return value + myBlocks;
+  }
+
+  private boolean deadEnd(Cell cell) {
+    for (Cell neigh : neighbours.get(cell)) {
+      if (!blocked(neigh)) return false;
+    }
+    if (Constants.DEBUG) {
+      System.err.println(cell + " is dead end!");
+    }
+    return true;
   }
 
   @Override
