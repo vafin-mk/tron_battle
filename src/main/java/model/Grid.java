@@ -12,6 +12,7 @@ public class Grid {
   private List<Cycle> cycles;
   private int myIndex;
   private int playersCount;
+  private Cycle closestEnemy;
 
   private List<Integer> checkOrder = new ArrayList<>();
 
@@ -74,6 +75,7 @@ public class Grid {
     if (myIndex < 10) {//local runner
       updateDistancesToEnemies();
     }
+    this.closestEnemy = closestEnemyCycle();
   }
 
   private void updateDistancesToEnemies() {
@@ -147,7 +149,7 @@ public class Grid {
     if (blocked(neighbour)) return Integer.MIN_VALUE;
 
     switch (evaluationStrategy) {
-      case NORMAL: return calculateBelongCellsPriority(neighbour);
+      case NORMAL: return calculateBelongCellsPriority(neighbour, cycles.get(myIndex));
       case MINIMAX: return calculateMinimaxPriority(neighbour);
       case SURVIVAL: return calculateSurvivalPriority(neighbour);
     }
@@ -156,8 +158,8 @@ public class Grid {
     return 0;//ERROR!
   }
 
-  private int calculateBelongCellsPriority(Cell cell) {
-    int[] belongCells = calculateBelongCells(cell);
+  private int calculateBelongCellsPriority(Cell cell, Cycle forCycle) {
+    int[] belongCells = calculateBelongCells(cell, forCycle);
 
     if (Constants.DEBUG) {
       System.err.println("--------------");
@@ -172,7 +174,7 @@ public class Grid {
   }
 
   //belonged cells(which you can access faster than enemy)
-  private int[] calculateBelongCells(Cell from) {
+  private int[] calculateBelongCells(Cell from, Cycle forCycle) {
     int myCells = 0;
     int enemyCells = 0;
     int enemyDists = 0;
@@ -185,7 +187,7 @@ public class Grid {
     for (Cycle cycle : cycles) {
       if (cycle.dead()) continue;
       starters.put(cycle, new ArrayList<>());
-      if (cycle.index == myIndex) {
+      if (cycle.index == forCycle.index) {
         starters.get(cycle).addAll(neighbours.get(from));
       } else {
         starters.get(cycle).addAll(neighbours.get(cycle.head));
@@ -202,7 +204,7 @@ public class Grid {
         for (Cell cell : starters.get(cycle)) {
           if (checkedCells.contains(cell)) continue;
           checkedEveryCell = false;
-          if (cycle.index == myIndex) {
+          if (cycle.index == forCycle.index) {
             myCells++;
           } else {
             enemyCells++;
@@ -220,6 +222,46 @@ public class Grid {
     }
 
     return new int[] {myCells, enemyCells, enemyDists};
+  }
+
+  private int calculateMinimaxValue(Cycle cycle) {
+    int[] values = calculateAvailableCells(cycle);
+    if (Constants.DEBUG) {
+      System.err.println(String.format("Minimax values for %s: cells=%s;dists=%s",
+          cycle.index == myIndex ? "me" : "enemy", values[0], values[1]));
+    }
+
+    return values[0] * Constants.AVAILABLE_CELLS_COEEFICENT
+        + values[1] * Constants.AVAILABLE_CELLS_DISTS_COEEFICENT;
+  }
+
+  private int[] calculateAvailableCells(Cycle cycle) {
+    int cells = 0;
+    int dists = 0;//sum dist to available cells
+
+    Set<Cell> checkedCells = new HashSet<>(allOccupiedCells());
+    List<Cell> starters = new ArrayList<>();
+    starters.addAll(neighbours.get(cycle.head));
+    int dist = 1;
+    boolean checkedEveryCell;
+
+    while(true) {
+      checkedEveryCell = true;
+      Set newCells = new HashSet();
+      for (Cell cell : starters) {
+        if (checkedCells.contains(cell)) continue;
+        checkedEveryCell = false;
+        cells++;
+        dists += dist;
+        checkedCells.add(cell);
+        newCells.addAll(neighbours.get(cell));
+      }
+      starters.clear();
+      starters.addAll(newCells);
+      if (checkedEveryCell) break;
+      dist++;
+    }
+    return new int[]{cells, dist};
   }
 
   public int closestDistanceToEnemy() {
@@ -248,11 +290,8 @@ public class Grid {
   //minimax https://en.wikipedia.org/wiki/Minimax
   //with alpha-beta pruning https://en.wikipedia.org/wiki/Alpha%E2%80%93beta_pruning
   private int minimax(Cell cell, int depth, int[] alpha, int[] beta, Cycle cycle) {
-    if (deadEnd(cell)) {
-      return Integer.MIN_VALUE + 1; //still better than walls!
-    }
-    if (depth == 0) {
-      return calculateBelongCellsPriority(cell); //todo win loss priority!
+    if (depth == 0 ) {
+      return calculateBelongCellsPriority(cell, cycle); //todo win loss priority!
     }
     Cell oldHead = cycle.head;
     applyMove(cycle, cell);
@@ -260,7 +299,7 @@ public class Grid {
       int bestValue = Integer.MIN_VALUE;
       for (Cell child : neighbours.get(cell)) {
         if (blocked(child)) continue;
-        int value = minimax(child, depth - 1, alpha, beta, closestEnemyCycle());
+        int value = minimax(child, depth - 1, alpha, beta, closestEnemy);
         alpha[0] = StrictMath.max(value, alpha[0]);
         bestValue = StrictMath.max(value, bestValue);
         if (alpha[0] >= beta[0]) break;
@@ -298,7 +337,7 @@ public class Grid {
 
   private int calculateSurvivalPriority(Cell cell) {
     return wallHuggingPriority(cell) * Constants.WALL_HUGG_COEFFICIENT
-        + calculateBelongCells(cell)[0];//my cells
+        + calculateBelongCells(cell, cycles.get(myIndex))[0];//my cells
   }
 
   private int wallHuggingPriority(Cell cell) {
